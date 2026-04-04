@@ -117,3 +117,102 @@ find . -type f -size 1033c ! -executable
 | Hidden files | `ls -la` |
 | Find by size/type | `find . -type f -size 1033c ! -executable` |
 | File type check | `file ./*` |
+
+
+-------------------
+
+
+## Level 6 → 7
+
+**Goal:** Find the password stored somewhere on the server, owned by user bandit7, group bandit6, and exactly 33 bytes in size.
+
+**Tricky:** The `find` command returns a lot of "Permission denied" errors that flood the output, making it hard to see the actual result. You can redirect stderr to clean up the output.
+
+**Solution:**
+```bash
+find / -type f -user bandit7 -group bandit6 -size 33c 2>/dev/null
+cat /path/to/file
+```
+
+**Stderr redirection:**
+| Command | What it does |
+|---|---|
+| `2>/dev/null` | hides all errors, shows only results |
+| `1>/dev/null` | hides results, shows only errors |
+| `2>&1` | merges errors into the normal output |
+
+---
+
+## Level 7 → 8
+
+**Goal:** Find the password in `data.txt` next to the word "millionth".
+
+**Solution:**
+```bash
+grep "millionth" data.txt
+```
+
+---
+
+## Level 8 → 9
+
+**Goal:** Find the only line of text that appears once in `data.txt`.
+
+**Tricky:** `uniq` only detects consecutive duplicates, so you need to sort first to group equal lines together.
+
+**Solution:**
+```bash
+sort data.txt | uniq -u
+```
+
+| Flag | Meaning |
+|---|---|
+| `-u` | shows only lines that appear exactly once |
+| `-d` | shows only duplicated lines |
+| `-c` | counts occurrences of each line |
+
+---
+
+## Level 9 → 10
+
+**Goal:** Find the password in `data.txt` among human-readable strings, preceded by several `=` characters.
+
+**Solution:**
+```bash
+strings data.txt | grep "="
+```
+
+---
+
+## Level 10 → 11
+
+**Goal:** The password is stored in `data.txt`, encoded in base64.
+
+**Solution:**
+```bash
+base64 -d data.txt
+```
+
+| Flag | Meaning |
+|---|---|
+| `-d` | decode (default encodes) |
+
+---
+
+## Level 11 → 12
+
+**Goal:** The password is stored in `data.txt`, where all letters have been rotated 13 positions (ROT13). Case-sensitive.
+
+**Tricky:** `tr` maps characters positionally, so uppercase and lowercase must be handled separately to preserve case.
+
+**Solution:**
+```bash
+cat data.txt | tr 'A-Za-z' 'N-ZA-Mn-za-m'
+```
+
+**How ROT13 works:**
+ROT13 splits the alphabet in two halves of 13 and swaps them:
+Input:   A B C D E F G H I J K L M | N O P Q R S T U V W X Y Z
+Output:  N O P Q R S T U V W X Y Z | A B C D E F G H I J K L M
+
+Applying ROT13 twice returns the original text, since the alphabet has 26 letters.
