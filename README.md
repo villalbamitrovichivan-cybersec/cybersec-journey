@@ -10,6 +10,7 @@ Documenting my path into cybersecurity from scratch.
 ## Platforms
 - [TryHackMe](https://tryhackme.com)
 - [Hack The Box](https://hackthebox.com)
+- [OverTheWire](https://overthewire.org/wargames/bandit)
 
 ## Writeups
 - [Linux Fundamentals 1](./linux-fundamentals-1.md)
