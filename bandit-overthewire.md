@@ -1,0 +1,119 @@
+# Bandit — OverTheWire
+
+## What is Bandit?
+Bandit is a wargame from OverTheWire designed to teach Linux fundamentals
+through real challenges on an actual Linux server accessed via SSH.
+
+---
+
+## Level 0 → 1
+**Goal:** Log into the server via SSH and find the password in a file called `readme`.
+
+**Commands used:**
+`ssh bandit0@bandit.labs.overthewire.org -p 2220`
+`ls`
+`cat readme`
+
+---
+
+## Level 1 → 2
+**Goal:** Find the password in a file called `-`.
+
+**Tricky:** `-` is interpreted as an argument, not a filename.
+
+**Solution:**
+`cat ./-`  or  `cat < ./-`
+
+---
+
+## Level 2 → 3
+**Goal:** Find the password in a file with spaces in the filename.
+
+**Tricky:** Spaces separate arguments in the terminal.
+
+**Solution:**
+`cat "spaces in this filename"`
+
+---
+
+## Level 3 → 4
+**Goal:** Find a hidden file inside a directory.
+
+**Tricky:** Hidden files start with `.` and don't show with regular `ls`.
+
+**Solution:**
+`ls -la`
+`cat .hiddenfile`
+
+---
+
+## Level 4 → 5
+**Goal:** Find the only human-readable file among many.
+
+**Solution:**
+`file ./*`  — shows file type of everything in the directory
+`cat ./filename`  — open the one that says ASCII text
+
+---
+
+## Level 5 → 6
+**Goal:** Find a file that is human-readable, 1033 bytes, not executable.
+
+**Solution:**
+`find . -type f -size 1033c ! -executable`
+`cat ./maybehere07/.file2`
+
+---
+## The `find` command in depth
+
+The `find` command searches for files using filters. You can combine
+as many filters as you need in a single command.
+
+### `-type` filter
+Specifies what kind of thing you're looking for:
+
+| Flag | Meaning | Example |
+|------|---------|---------|
+| `-type f` | files only | `find . -type f` |
+| `-type d` | directories only | `find . -type d` |
+| `-type l` | symbolic links only | `find . -type l` |
+
+### `-size` filter
+Searches by file size. The letter after the number sets the unit:
+
+| Flag | Meaning | Example |
+|------|---------|---------|
+| `-size 1033c` | exactly 1033 bytes | `find . -size 1033c` |
+| `-size +1000c` | bigger than 1000 bytes | `find . -size +1000c` |
+| `-size -1000c` | smaller than 1000 bytes | `find . -size -1000c` |
+
+### `!` — the NOT operator
+Excludes results that match a condition.
+Think of it as "everything EXCEPT this":
+```bash
+find . ! -executable        # files that are NOT executable
+find . ! -type d            # everything that is NOT a directory
+find . ! -name "*.txt"      # files that are NOT .txt
+```
+
+### Combining filters
+Filters stack together, all conditions must be true at the same time:
+```bash
+# Find files that are:
+# - actual files (not directories)
+# - exactly 1033 bytes
+# - not executable
+find . -type f -size 1033c ! -executable
+```
+
+---
+
+## Key learnings
+
+| Trick | Solution |
+|-------|----------|
+| File named `-` | `cat ./-` |
+| File with spaces | `cat "filename with spaces"` |
+| Hidden files | `ls -la` |
+| Find by size/type | `find . -type f -size 1033c ! -executable` |
+| File type check | `file ./*` |
