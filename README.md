@@ -6,6 +6,7 @@ Documenting my path into cybersecurity from scratch.
 - TryHackMe — fundamentals
 - Linux basics
 - Building toward ISC2 CC and CompTIA Security+
+- Learning about Read Team, Ports, OWASP and CWE
 
 ## Platforms
 - [TryHackMe](https://tryhackme.com)
