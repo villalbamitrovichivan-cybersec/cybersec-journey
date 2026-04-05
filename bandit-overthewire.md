@@ -216,3 +216,199 @@ Input:   A B C D E F G H I J K L M | N O P Q R S T U V W X Y Z
 Output:  N O P Q R S T U V W X Y Z | A B C D E F G H I J K L M
 
 Applying ROT13 twice returns the original text, since the alphabet has 26 letters.
+
+---
+
+# Bandit — OverTheWire
+
+## Level 12 → 13
+
+**Goal:** The password for the next level is stored in a file called `data.txt` which is a hexdump (hexadecimal representation of binary data) that has been compressed multiple times.
+
+**Understanding the challenge:**
+- A hexdump is binary data represented as hexadecimal numbers
+- The file has been compressed in multiple layers (gzip, bzip2, compress, etc.)
+- You need to reverse both: convert hex to binary AND decompress multiple times
+
+**Step-by-step solution:**
+
+### Step 1: Create a temporary directory (good practice)
+```bash
+mkdir /tmp/bandit12
+cd /tmp/bandit12
+```
+
+### Step 2: Copy the data file to your temporary directory
+```bash
+cp ~/data.txt .
+```
+
+### Step 3: Convert hexdump to binary
+The file `data.txt` contains hexadecimal text. Use `xxd -r` to reverse it (convert hex → binary):
+```bash
+xxd -r data.txt data.bin
+```
+
+`xxd -r` means "reverse": converts hexadecimal representation back into actual binary data.
+
+### Step 4: Check what type of file it is
+```bash
+file data.bin
+```
+Output: `gzip compressed data`
+
+### Step 5: Decompress (loop until you get readable text)
+Since there are multiple layers, you need to decompress several times. Use `-c` to output without modifying the original:
+```bash
+gunzip -c data.bin > data1
+file data1
+# Output: bzip2 compressed data
+
+bunzip2 -c data1 > data2
+file data2
+# Output: gzip compressed data
+
+gunzip -c data2 > data3
+file data3
+# Output: POSIX tar archive
+
+tar -xf data3
+ls
+# Output: data5.bin
+
+file data5.bin
+# Output: bzip2 compressed data
+
+bunzip2 -c data5.bin > data6
+file data6
+# Output: gzip compressed data
+
+gunzip -c data6 > data7
+file data7
+# Output: POSIX tar archive
+
+tar -xf data7
+ls
+# Output: data8.bin
+
+file data8.bin
+# Output: gzip compressed data
+
+gunzip -c data8.bin > data9
+file data9
+# Output: ASCII text
+```
+
+### Step 6: Read the password
+```bash
+cat data9
+```
+
+**Key commands learned:**
+
+| Command | What it does |
+| --- | --- |
+| `xxd -r` | Converts hexadecimal to binary |
+| `gunzip -c` | Decompresses gzip without modifying original |
+| `bunzip2 -c` | Decompresses bzip2 without modifying original |
+| `tar -xf` | Extracts (unpacks) a tar archive |
+| `file` | Identifies file type |
+
+**Important note:**
+Multiple compression types exist (gzip, bzip2, compress) because they were created at different times and for different purposes. In practice, you don't memorize which is "best" — you just use `file` to identify what type you have, then use the correct decompression command.
+
+---
+
+## Level 13 → 14
+
+**Goal:** The password for the next level is stored in `/etc/bandit_pass/bandit14` and can only be read by user `bandit14`. You're given a private SSH key (`sshkey.private`) to authenticate as `bandit14`.
+
+**The challenge:**
+This level teaches you about SSH key-based authentication. Unlike the previous levels where you logged in with a password, you now need to use a private SSH key to authenticate as a different user.
+
+**Why this is tricky:**
+When you first try SSH from WITHIN the Bandit server, you get an error about localhost being blocked. This is the gotcha — OverTheWire deliberately blocks SSH connections from localhost to prevent resource abuse. **You must log in from your own machine, not from within the Bandit server.**
+
+**Personal Note:**
+I despise this level, whoever created OverTheWire, i'm going to find you and give you a hug.
+
+---
+
+## Step-by-step solution:
+
+### Step 1: Download the SSH key to your local machine
+
+You need to be on YOUR computer, not logged into Bandit.
+
+From your local terminal (Windows Command Prompt, Mac Terminal, Linux Terminal):
+```bash
+scp -P 2220 bandit13@bandit.labs.overthewire.org:/home/bandit13/sshkey.private ~/
+```
+
+This command:
+- `scp` = secure copy (like `cp` but over SSH)
+- `-P 2220` = port 2220 (OverTheWire's port)
+- `bandit13@bandit.labs.overthewire.org:/home/bandit13/sshkey.private` = source file on the server
+- `~/` = destination on your machine (home directory)
+
+When prompted, enter bandit13's password.
+
+### Step 2: Use the SSH key to log in as bandit14
+
+From your local machine:
+```bash
+ssh -i ~/sshkey.private bandit14@bandit.labs.overthewire.org -p 2220
+```
+
+This command:
+- `ssh` = secure shell (remote login)
+- `-i ~/sshkey.private` = use THIS file as your identity/authentication key (instead of a password)
+- `bandit14@bandit.labs.overthewire.org` = log in as user `bandit14` on this server
+- `-p 2220` = use port 2220
+
+### Step 3: Read the password
+Once logged in as bandit14:
+```bash
+cat /etc/bandit_pass/bandit14
+```
+
+---
+
+## Why I got stuck (and how to avoid it):
+
+**The mistake:** Trying to run SSH from WITHIN the Bandit server
+```bash
+# DON'T DO THIS (from inside bandit13)
+ssh -i sshkey.private bandit14@bandit.labs.overthewire.org -p 2220
+# Error: localhost connections blocked
+```
+
+**The solution:** Run SSH from your local machine
+```bash
+# DO THIS (from your computer's terminal)
+ssh -i ~/sshkey.private bandit14@bandit.labs.overthewire.org -p 2220
+# Works!
+```
+
+**Why?** OverTheWire deliberately disables SSH connections from `127.0.0.1` (localhost) to prevent resource exhaustion. This means you can't chain SSH sessions. You must always connect directly from your machine to the server.
+
+**Note:** OverTheWire previously allowed this, but changed the rules to conserve server resources. The level hint doesn't explicitly say this, which is why it's confusing.
+
+---
+
+## Key concepts:
+
+| Concept | Explanation |
+| --- | --- |
+| **Private SSH key** | A file that proves your identity to a server (like a super-secure password) |
+| **`-i` flag in SSH** | "identity file" — tells SSH which key to use for authentication |
+| **`scp` command** | Secure copy — transfers files over SSH |
+| **localhost blocking** | Bandit disables SSH from `127.0.0.1` to prevent abuse |
+| **SSH from your machine** | Always connect directly from your computer, never try to chain SSH sessions |
+
+---
+
+## Summary
+
+- **Bandit 12→13:** Learn about hexdumps, multiple compression layers, and how to decompress systematically
+- **Bandit 13→14:** Learn about SSH key-based authentication and the importance of connecting from your local machine, not from the server itself
