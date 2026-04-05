@@ -412,3 +412,74 @@ ssh -i ~/sshkey.private bandit14@bandit.labs.overthewire.org -p 2220
 
 - **Bandit 12→13:** Learn about hexdumps, multiple compression layers, and how to decompress systematically
 - **Bandit 13→14:** Learn about SSH key-based authentication and the importance of connecting from your local machine, not from the server itself
+
+
+---
+
+
+## Level 15 → 16
+
+**Goal:** Submit the password of the current level to port 30000 on localhost.
+
+**Solution:**
+`nc localhost 30000`
+*(paste password → server returns next password)*
+
+**Key learning:** `nc` connects directly to a host:port and keeps the connection
+open waiting for input — no flags needed for a basic connection.
+
+---
+
+## Level 16 → 17
+
+**Goal:** Submit the password to a port on localhost in the range 31000–32000
+that speaks SSL/TLS.
+
+**Commands used:**
+`nmap localhost -sV -p 31000-32000 -T4`
+`openssl s_client -connect localhost:31790 -quiet`
+
+**Tricky:** The server returns an RSA private key, not a password.
+Save it locally as `bandit17.key` and use it to connect to the next level.
+
+**Solution:**
+1. Scan the port range to find which one has SSL.
+2. Connect with `openssl s_client -quiet` (suppresses TLS handshake noise).
+3. Paste the password → server returns an RSA private key.
+4. Save the key locally, then: `ssh -i bandit17.key bandit17@bandit.labs.overthewire.org -p 2220`
+
+**Key learning:** `-quiet` in `openssl s_client` suppresses the handshake output
+so you can actually see the server's response.
+
+---
+
+## Level 17 → 18
+
+**Goal:** Find the one line that changed between `passwords.old` and `passwords.new`.
+
+**Solution:**
+`diff passwords.new passwords.old`
+
+The line marked with `<` belongs to the first file (`passwords.new`) — that's the password.
+
+**Key learning:** `diff` marks lines with `<` (first file) and `>` (second file).
+The changed line in the newer file is the answer.
+
+---
+
+## Level 18 → 19
+
+**Goal:** Someone modified `.bashrc` to log you out immediately on SSH login.
+
+**Tricky:** An interactive SSH session triggers `.bashrc`, which kicks you out.
+
+**Solution:**
+`ssh bandit18@bandit.labs.overthewire.org -p 2220 cat readme`
+
+Passing a command directly after `user@host` runs it without starting an
+interactive shell — `.bashrc` never fires.
+
+**Key learning:** `ssh user@host command` executes a single command remotely
+and exits, bypassing shell config files like `.bashrc`.
+
+---
