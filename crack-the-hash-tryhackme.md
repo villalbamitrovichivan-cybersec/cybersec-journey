@@ -197,3 +197,4 @@ These aren't just CTF tricks. Every time a database leaks, these are the hashes 
 A system using MD5 with no salt is catastrophically vulnerable.
 A system using bcrypt with a strong password policy is practically uncrackable.
 **The algorithm matters. The password matters. Both together is what security looks like.**
+**Also, you coul 100% use hashes.com or crackstation.com if you know what you are looking for**
