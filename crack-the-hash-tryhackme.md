@@ -191,6 +191,15 @@ hashcat -m 110 hash.txt /usr/share/wordlists/rockyou.txt
 | Tool selection | CrackStation first (seconds), then Hashcat if needed |
 | Wordlist attacks | Only crack weak passwords — strong + bcrypt = inviable |
 
+---
+
+##  Where hashes live in the real world
+Hashes don't only appear in CTF challenges. Here are common places you'll encounter them:
+LocationAlgorithm typically usedWho stores them/etc/shadowSHA-512crypt ($6$)Linux system usersWindows SAM databaseNTLMWindows local accountsWeb app database (users table)bcrypt, SHA-256, MD5Any login systemConfig filesMD5, SHA-1 (weak)Misconfigured apps.htpasswd (Apache)MD5, bcryptWeb server basic auth
+Tricky: /etc/passwd used to store hashes directly — any user could read it.
+They were moved to /etc/shadow (root-only) because of that exact risk.
+In privilege escalation scenarios, reading /etc/shadow is often an early objective.
+
 ## Real-world relevance
 
 These aren't just CTF tricks. Every time a database leaks, these are the hashes attackers try to crack.
