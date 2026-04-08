@@ -765,3 +765,12 @@ Now inside as bandit26:
 **Key concept — Shell Escape + SUID:** Escaping restricted shells via text editors is a classic technique (also works with `vim`, `less`, `man`). SUID allows running a binary with its owner's permissions, not the caller's.
 
 **Personal note:** Seriously, who designed this, WHY? IN WHAT WORLD WOULD YOU NEED THIS?
+
+---
+
+##   Level 27 → 28
+Goal: Clone a remote Git repository accessible via SSH and find the password inside its files.
+Commands used:
+git clone ssh://bandit27-git@bandit.labs.overthewire.org:2220/home/bandit27-git/repo
+ls
+cat README
